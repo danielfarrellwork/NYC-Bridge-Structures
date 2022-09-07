@@ -1,0 +1,217 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jan 14 09:49:18 2022
+
+@author: karakusb
+"""
+
+import pandas as pd
+import os
+import time
+import matplotlib.pyplot as plt
+import matplotlib
+import warnings
+from datetime import datetime
+from dateutil import parser
+import datetime
+
+warnings.filterwarnings("ignore")
+
+t0=time.time()
+
+#<Paths>
+InputFolder="C:\\Projects\\bluebeam\dailyFiles" 
+ad_file=r'\\corp\us\CentralData\Regional\DELSOL\PBIDataSources\AD.parquet'
+OutputFolder="C:\\Projects\\bluebeam\\" 
+#<\Paths>
+
+#<\Functions>
+
+def CalcTime(func):
+    def wrapper(*args,**kwargs):
+        t0=time.time()
+        res=func(*args,**kwargs)
+        t1=time.time()
+        proc_time=str(round(t1-t0,4))
+        fnamelen=len(func.__name__)
+        noas=40-fnamelen
+        print(func.__name__,"." * noas+"processed "+ proc_time+" in seconds.")
+        return res
+    return wrapper
+
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+        
+def CalcTime2(t0,t1):
+    proc_time=str(round(t1-t0,4))
+    fname='Determine License keepers'
+    fnamelen=len(fname)
+    noas=40-fnamelen
+    print(fname+"." * noas+"processed "+ proc_time+" in seconds.")
+
+def is_weekend(d):
+    if type(d)==str:
+        d=parser.parse(d)
+    return d.weekday()>4
+
+@CalcTime
+def CombineDailyFiles(InputFolder,fileExtension):
+    #<Set the working directory>
+    os.chdir(InputFolder)
+    path=os.getcwd()
+    files=os.listdir(path)
+    #<Set the working directory>
+
+    #empty data frame for populating data in the spreadsheets
+    dfs=[]
+
+    #<Select only xxx files in the input directory>
+    el=len(fileExtension)
+    files_csv = [f for f in files if f[-el:] == fileExtension] #file extension
+    #<\Select only xxx files in the input directory>
+
+
+    for f in files_csv:    
+        fs=pd.read_csv((InputFolder+"\\"+f),header=0)
+        fs["FileName"]=f[0:-el-1]
+        dfs.append(fs)
+    combined = pd.concat(dfs, ignore_index=True)
+    return combined
+
+@CalcTime
+def Cleanup(df):
+    #<Prepare data for confirmation process>    
+    df[['Date','Time']]=df['Timestamp (UTC)'].str.split(expand=True)
+    df['Date']=pd.to_datetime(df['Date'])
+    df['Date']=df['Date'].dt.date
+    cols=[7,10]
+    df.drop(df.columns[cols],axis=1,inplace=True)
+    df['User']=df['User'].str.upper()
+    return df
+
+@CalcTime
+def AlreadyActive(df):
+    df=df[df['Action']=="Already Active"]
+    df.reset_index(drop=True,inplace=True)
+    return df
+
+@CalcTime
+def UniqueUsers(df):
+    ActDir=pd.read_parquet(ad_file,engine='pyarrow',columns=['sAMAccountName','EmailAddress','GivenName','Surname','Office','State','Department','Enabled'])
+    users=pd.DataFrame()
+    users['User']=df['User'].unique()
+    users = pd.merge(users, ActDir, how='left', left_on='User', right_on='sAMAccountName')
+    users.drop(['sAMAccountName'],axis=1,inplace=True)
+    return users
+
+
+@CalcTime
+def Dates(df):
+    dates=pd.DataFrame()
+    dates['Date']=df['Date'].unique()
+    return dates
+
+@CalcTime
+def getDenials(df):
+    dates=df['Date'].drop_duplicates()
+    dates.reset_index(drop=True,inplace=True)
+    den=df[df['Action']=="Denied"]
+    cols=[0,1,2,3,5,6,7]
+    den.drop(den.columns[cols],axis=1,inplace=True)
+    den.drop_duplicates(inplace=True)
+    denials=pd.DataFrame()
+    denials['Date']=dates
+    denials['Count']=''
+    for i in range(len(dates)):
+        dc=len(den[den['Date']==dates[i]])
+        denials['Count'][i]=dc
+    return denials
+
+@CalcTime
+def getMaxConc(df):
+    dates=df['Date'].drop_duplicates()
+    dates.reset_index(drop=True,inplace=True)
+    MaxConcs=pd.DataFrame()
+    MaxConcs['Date']=dates
+    MaxConcs['Count']=''
+    for i in range (len(MaxConcs)): 
+        date=MaxConcs['Date'][i]
+        dff=df[df['Date']==date]
+        dff.reset_index(drop=True,inplace=True)
+        mcu=dff['Total Active Seats'].max()
+        MaxConcs['Count'][i]=mcu
+    return MaxConcs
+
+@CalcTime          
+def Graph(denied,Max):  
+    mnDate=Max.Date.min()
+    mxDate=Max.Date.max()
+    matplotlib.rcParams.update({'font.size': 6})
+    plt.plot(denied['Date'],denied['Count'],color='r',label='denied')
+    plt.plot(denied['Date'],Max['Count'],color='g',label='Max')
+    
+    for day in Max['Date']:
+        if is_weekend(day)==True:
+            plt.axvspan(day, day + datetime.timedelta(days=1),0,1000,color='#fce9dc')        
+              
+    csfont = {'fontname':'Calibri'}
+    hfont = {'fontname':'Courrier'}
+    # Naming the x-axis, y-axis and the whole graph
+    plt.xlabel("Date",**hfont)
+    plt.xticks(rotation = 90)
+    plt.ylabel("Occurance")
+    #plt.grid(True)
+    plt.grid(linestyle='--', linewidth=.5)
+    plt.legend()
+    plt.title("WSP USA Bluebeam Usage Analytics ( "+str(mnDate)+' - '+str(mxDate)+' )',**csfont)
+    plt.savefig(OutputFolder+'WSP USA Bluebeam Usage Graph.pdf')
+    #plt.savefig(imgdata,format="png")
+#<\Functions>
+
+
+#<Get Data>
+
+data=CombineDailyFiles(InputFolder,'csv')
+data=Cleanup(data)
+AlAct=AlreadyActive(data)
+users=UniqueUsers(data)
+dates=Dates(data)
+denied=getDenials(data)  
+Max=getMaxConc(data)  
+Graph(denied,Max)
+
+#<\Get Data>
+
+#<Process>
+t0=time.time()
+printProgressBar(0, len(dates), prefix = 'Progress:', suffix = 'Complete', length = 50)
+for d in range(len(dates)):
+    dcol=dates['Date'][d]
+    users[dcol]=''
+    printProgressBar(d+1, len(dates), prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for u in range(len(users)):        
+        for a in range(len(AlAct)):
+            if AlAct['User'][a]==users['User'][u] and AlAct['Date'][a]==dates['Date'][d]:
+                users[dcol][u]='X'
+                break
+t1=time.time()
+CalcTime2(t0,t1)
+
+#<\Process>
+    
+#<Export>
+with pd.ExcelWriter(OutputFolder+'blubeamUsageAnalytics.xlsx') as writer:  
+    data.to_excel(writer, sheet_name='Combined',index=False)
+    users.to_excel(writer, sheet_name='LicenseKeepers',index=False)
+    denied.to_excel(writer,sheet_name='Denials',index=False)
+#<\Export>
+
+
+
+
