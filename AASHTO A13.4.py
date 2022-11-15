@@ -42,16 +42,17 @@ extreme_limit_state = AASHTO_1_3_2.get_user_input()
 #             gamma_1 = 1
 #         R_r = phi * R_n
 #         return R_r
-# T_A13_2_1 = pd.DataFrame({
-#              'Ft_Transverse_kips'   :[13.5, 27.0, 54.0, 54.0, 124.0, 175.0],
-#              'FL_Longitudinal_kips' :[4.5, 9.0, 18.0, 18.0, 41.0, 58.0],
-#              'Fv_Vertical_kips'     :[4.5, 4.5, 4.5, 18.0, 80.0, 80.0],
-#              'Lt_ft'                :[4.0, 4.0, 4.0, 3.5, 8.0, 8.0],
-#              'LL_ft'                :[4.0, 4.0, 4.0, 3.5, 8.0, 8.0],
-#              'Lv_ft'                :[18.0, 18.0, 18.0, 18.0, 40.0, 40.0],
-#              'He_in_min'            :[18.0, 20.0, 24.0, 32.0, 42.0, 56.0],
-#              'H_in_min'             :[27.0, 27.0, 27.0, 32.0, 42.0, 90.0],
-#              }, columns=['Ft_Transverse_kips', 'FL_Longitudinal_kips', 'Fv_Vertical_kips', 'Lt_ft', 'LL_ft', 'He_in_min', 'H_in_min'])  #Design Forces for Traffic Railings
+T_A13_2_1 = pd.DataFrame({
+             'Ft_Transverse_kips'   :[13.5, 27.0, 54.0, 54.0, 124.0, 175.0],
+             'FL_Longitudinal_kips' :[4.5, 9.0, 18.0, 18.0, 41.0, 58.0],
+             'Fv_Vertical_kips'     :[4.5, 4.5, 4.5, 18.0, 80.0, 80.0],
+             'Lt_ft'                :[4.0, 4.0, 4.0, 3.5, 8.0, 8.0],
+             'LL_ft'                :[4.0, 4.0, 4.0, 3.5, 8.0, 8.0],
+             'Lv_ft'                :[18.0, 18.0, 18.0, 18.0, 40.0, 40.0],
+             'He_in_min'            :[18.0, 20.0, 24.0, 32.0, 42.0, 56.0],
+             'H_in_min'             :[27.0, 27.0, 27.0, 32.0, 42.0, 90.0],
+             }, columns=['Ft_Transverse_kips', 'FL_Longitudinal_kips', 'Fv_Vertical_kips', 'Lt_ft', 'LL_ft', 'He_in_min', 'H_in_min'])  #Design Forces for Traffic Railings
+T_A13_2_1.to_csv('T_A13_2_1.csv')
 # inputting = True
 # while inputting:
 #     test_level = input('test level? (1-6):')

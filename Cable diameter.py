@@ -15,7 +15,6 @@ import string
 import csv
 randn = np.random.randn
 
-
 raw_df =  pd.read_excel(r"C:\Users\usdf659971\UDEMY\Complete-Python-3-Bootcamp-master\Challenges\RK-20_Main Cable Compaction measurement log.xlsx")
 
 raw_df.rename(columns = {'Unnamed: 0': 'PP'}, inplace = True)
