@@ -6,6 +6,7 @@ For Tasks and Duties, include:
  - degree of personal responsibility
  - the complexity of the work performed
  - engineering decisions that you made.
+ - 
 For Projects, include: 
  - the project name
  - location
